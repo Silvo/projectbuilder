@@ -1,0 +1,31 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<project_types>
+  <project_type name="Testi Type">
+    
+    <fields>
+      <text_field name="Project name" content="P Name"/>
+      <folder_field name="Project path" content="C:\Users\Sipe\Documents\engineering\projects\programming\"/>
+      <file_field name="Project executable" content="C:\Users\Sipe\Documents\engineering\projects\programming\a.exe"/>
+      <text_field name="Author" content="Silvo Vaisanen"/>
+    </fields>
+    
+    <!-- the template folder is copied to the project directory as-is and all of the files with listed
+       - extensions are crawled through and the target strings are replaced with the constents of the
+       - corresponding text field -->
+    <templates>
+      <file_text_replacement extension="sublime-project" target_string="%project_name%" source_field="Project name" text_style="underscore"/>
+      <file_text_replacement extension="c" target_string="%project_name%" source_field="Project name" text_style="caps"/>
+      <file_text_replacement extension="sublime-project" target_string="%project_path%" source_field="Project path" text_style="none"/>
+      <file_text_replacement extension="todo" target_string="%project_name%" source_field="Project name" text_style="pascal"/>
+    </templates>
+    
+    <symlinks>
+      <symlink name="code" target_path="M:\Source"/>
+    </symlinks>
+
+    <execute>
+      <program path="" args=""/>
+    </execute>
+
+  </project_type>
+</project_types>

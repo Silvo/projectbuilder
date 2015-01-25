@@ -1,0 +1,90 @@
+﻿<Window x:Class="ProjectBuider.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:ProjectBuider"
+        Title="ProjectBuilder"
+        Height="500" Width="800" Background="{x:Null}" WindowStyle="None" AllowsTransparency="True">
+
+    <Window.Resources>
+        <XmlDataProvider x:Key="ProjectData" Source="projects.xml" XPath="project_types"/>
+        <DataTemplate DataType="text_field">
+            <DockPanel x:Name="dpTest" LastChildFill="True" local:MarginSetter.Margin="3" Height="30">
+                <Label Name="lFieldName" Content="{Binding XPath=@name}" Width="130" Padding="0 3 0 0"/>
+                <local:LinkedTextBox Name="tbTextField" Text="{Binding XPath=@content, Delay=2000}" IdString="{Binding XPath=@name}"
+                                     Link="Write"/>
+            </DockPanel>
+        </DataTemplate>
+        <DataTemplate DataType="file_field">
+            <DockPanel LastChildFill="True" local:MarginSetter.Margin="3" Height="30">
+                <Label Name="lFieldName" Content="{Binding XPath=@name}" Width="130" Padding="0 3 0 0"/>
+                <Button Name="bSelectFile" Content="..." DockPanel.Dock="Right" Width="30" Click="bSelectFile_Click" Style="{StaticResource OpenDialogButton}"/>
+                <local:LinkedTextBox Name="tbSelectFile" Text="{Binding XPath=@content, Delay=2000}" IdString="{Binding XPath=@name}"
+                                     Link="Write"/>
+            </DockPanel>
+        </DataTemplate>
+        <DataTemplate DataType="folder_field">
+            <DockPanel LastChildFill="True" local:MarginSetter.Margin="3" Height="30">
+                <Label Name="lFieldName" Content="{Binding XPath=@name}" Width="130" Padding="0 3 0 0"/>
+                <Button Name="bSelectFolder" Content="..." DockPanel.Dock="Right" Width="30" Click="bSelectFolder_Click" Style="{StaticResource OpenDialogButton}"/>
+                <local:LinkedTextBox Name="tbSelectFolder" Text="{Binding XPath=@content, Delay=2000}" IdString="{Binding XPath=@name}"
+                                     Link="Write"/>
+            </DockPanel>
+        </DataTemplate>
+        <DataTemplate DataType="file_text_replacement">
+            <DockPanel LastChildFill="True" local:MarginSetter.Margin="3" Height="30">
+                <Label Content="Replacement" Width="84" Padding="0 3 0 0"/>
+                <Label Content="File ext" Width="40" Padding="0 3 0 0"/>
+                <TextBox Name="tbFileExt" Width="105" Text="{Binding XPath=@extension}"/>
+                <Label Content="From" Padding="0 3 0 0"/>
+                <TextBox x:Name="tbFromString" Width="122" Text="{Binding XPath=@target_string}"/>
+                <Label Content="To" Padding="0 3 0 0"/>
+                <local:LinkedTextBox Name="tbToString" IdString="{Binding XPath=@source_field}" TextStyle="{Binding XPath=@text_style}"
+                                     />
+            </DockPanel>
+        </DataTemplate>
+        <DataTemplate DataType="symlink">
+            <DockPanel LastChildFill="True" local:MarginSetter.Margin="3" Height="30">
+                <Label Content="Symbolic link" Width="90" Padding="0 3 0 0"/>
+                <Label Content="Path" Padding="10 3 0 0" Width="34"/>
+                <TextBox Name="tbTargetPath" Text="{Binding XPath=@target_path}" Width="290"/>
+                <Button Name="bSelectFolder" Content="..." Width="30" Click="bSelectFolder_Click" Style="{StaticResource OpenDialogButton}"/>
+                <Label Content="Name" Padding="0 3 0 0" Width="35"/>
+                <TextBox Name="tbLinkName" Text="{Binding XPath=@name}" HorizontalAlignment="Stretch"/>
+            </DockPanel>
+        </DataTemplate>
+        <DataTemplate DataType="program">
+            <DockPanel LastChildFill="True" local:MarginSetter.Margin="3" Height="30">
+                <Label Content="Execute program" Width="130" Padding="0 3 0 0"/>
+                <TextBox Name="tbPath" Text="{Binding XPath=@link_name}" HorizontalAlignment="Stretch" Width="290"/>
+                <Button Name="bSelectFolder" Content="..." Width="30" Click="bSelectFile_Click" Style="{StaticResource OpenDialogButton}"/>
+                <Label Content="Args" Padding="8 3 0 0" Width="35"/>
+                <TextBox Name="tbExeArgs" Text="{Binding XPath=@target_path}"/>
+            </DockPanel>
+        </DataTemplate>
+    </Window.Resources>
+    
+    <Grid Margin="10 10 10 0">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="30"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="30"/>
+        </Grid.RowDefinitions>
+
+        <ComboBox Name="cbProjectType" Height="25" ItemsSource="{Binding Source={StaticResource ProjectData}, XPath=./*}" Grid.Row="0">
+            <ComboBox.ItemTemplate>
+                <DataTemplate>
+                    <TextBlock Text="{Binding XPath=@name}" />
+                </DataTemplate>
+            </ComboBox.ItemTemplate>
+        </ComboBox>
+
+        <ScrollViewer VerticalScrollBarVisibility="Auto" Grid.Row="1">
+            <ItemsControl x:Name="icItems" DataContext="{Binding Path=SelectedItem, ElementName=cbProjectType}" ItemsSource="{Binding XPath=*/*}"/>
+        </ScrollViewer>
+
+        <DockPanel HorizontalAlignment="Right" local:MarginSetter.Margin="5 5 2 0" Grid.Row="2">
+            <Button Name="bCancel" Content="Cancel" Width="75" Click="bCancel_Click"/>
+            <Button Name="bOk" Content="OK" Width="75" Click="bOk_Click"/>
+        </DockPanel>
+    </Grid>
+</Window>
