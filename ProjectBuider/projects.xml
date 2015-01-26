@@ -4,14 +4,15 @@
     
     <fields>
       <text_field name="Project name" content="P Name"/>
-      <folder_field name="Project path" content="C:\Users\Sipe\Documents\engineering\projects\programming\"/>
+      <folder_field name="Project root" content="M:\test\"/>
+      <combination_field name="Project folder" format="{0,3:D3}-{1}" source1="Project number" source2="Project name" text_style="underscore"/>
+      <folder_field name="Template path" content="M:\test\templates"/>
       <file_field name="Project executable" content="C:\Users\Sipe\Documents\engineering\projects\programming\a.exe"/>
       <text_field name="Author" content="Silvo Vaisanen"/>
+      <number_field name="Project number" parse_path_source="Project root" modifier="+1"/>
+      
     </fields>
-    
-    <!-- the template folder is copied to the project directory as-is and all of the files with listed
-       - extensions are crawled through and the target strings are replaced with the constents of the
-       - corresponding text field -->
+
     <templates>
       <file_text_replacement extension="sublime-project" target_string="%project_name%" source_field="Project name" text_style="underscore"/>
       <file_text_replacement extension="c" target_string="%project_name%" source_field="Project name" text_style="caps"/>

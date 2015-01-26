@@ -9,15 +9,17 @@ using System.Windows.Controls;
 
 namespace ProjectBuider
 {
-    public enum LinkType
+    public enum LinkedTextBoxType
     {
-        Read,
-        Write
+        Normal,
+        Number
     }
 
     public class LinkedTextBox : TextBox
     {
         private static List<LinkedTextBox> _links = new List<LinkedTextBox>();
+        private string _linkedContent1 = "";
+        private string _linkedContent2 = "";
 
         public static readonly RoutedEvent LinkedDataChangedEvent =
             EventManager.RegisterRoutedEvent("LinkedDataChanged", RoutingStrategy.Bubble,
@@ -42,29 +44,60 @@ namespace ProjectBuider
             set { SetValue(TextStyleProperty, value); }
         }
 
-        public LinkType Link
+        public string TextFormat
         {
-            get { return (LinkType)GetValue(LinkProperty); }
-            set { SetValue(LinkProperty, value); }
+            get { return (string)GetValue(TextFormatProperty); }
+            set { SetValue(TextFormatProperty, value); }
         }
 
-        public string IdString
+        public string WriteLink
         {
-            get { return (string)GetValue(IdStringProperty); }
-            set { SetValue(IdStringProperty, value); }
+            get { return (string)GetValue(WriteLinkProperty); }
+            set { SetValue(WriteLinkProperty, value); }
+        }
+        public string ReadLink1
+        {
+            get { return (string)GetValue(ReadLink1Property); }
+            set { SetValue(ReadLink1Property, value); }
+        }
+        public string ReadLink2
+        {
+            get { return (string)GetValue(ReadLink2Property); }
+            set { SetValue(ReadLink2Property, value); }
+        }
+
+        //TODO: Separate the number textbox into its own class.
+        //      A common base class with link list and necessary functionality
+        //      and two? subclasses that handle the different box types.
+        public LinkedTextBoxType BoxType
+        {
+            get { return (LinkedTextBoxType)GetValue(BoxTypeProperty); }
+            set { SetValue(BoxTypeProperty, value); }
         }
 
         public static readonly DependencyProperty TextStyleProperty =
             DependencyProperty.Register("TextStyle", typeof(string), typeof(LinkedTextBox),
             new PropertyMetadata("none"));
 
-        public static readonly DependencyProperty LinkProperty =
-            DependencyProperty.Register("Link", typeof(LinkType), typeof(LinkedTextBox),
-            new PropertyMetadata(LinkType.Read, OnLinkChanged));
+        public static readonly DependencyProperty TextFormatProperty =
+            DependencyProperty.Register("TextFormat", typeof(string), typeof(LinkedTextBox),
+            new PropertyMetadata("", OnTextFormatChanged));
 
-        public static readonly DependencyProperty IdStringProperty =
-            DependencyProperty.Register("IdString", typeof(string), typeof(LinkedTextBox),
-            new PropertyMetadata("", OnIdStringChanged));
+        public static readonly DependencyProperty WriteLinkProperty =
+            DependencyProperty.Register("WriteLink", typeof(string), typeof(LinkedTextBox),
+            new PropertyMetadata("", OnWriteLinkChanged));
+
+        public static readonly DependencyProperty ReadLink1Property =
+            DependencyProperty.Register("ReadLink1", typeof(string), typeof(LinkedTextBox),
+            new PropertyMetadata("", OnReadLinkChanged));
+
+        public static readonly DependencyProperty ReadLink2Property =
+            DependencyProperty.Register("ReadLink2", typeof(string), typeof(LinkedTextBox),
+            new PropertyMetadata("", OnReadLinkChanged));
+
+        public static readonly DependencyProperty BoxTypeProperty =
+            DependencyProperty.Register("BoxType", typeof(LinkedTextBoxType), typeof(LinkedTextBox),
+            new PropertyMetadata(LinkedTextBoxType.Normal, OnBoxTypeChanged));
 
         public LinkedTextBox()
         {
@@ -72,104 +105,135 @@ namespace ProjectBuider
             base.TextChanged += LinkedTextBox_TextChanged;
         }
 
-        private static void OnIdStringChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+        private static void OnWriteLinkChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         {
-            LinkedTextBox ltb = d as LinkedTextBox;
+            LinkedTextBox myLink = d as LinkedTextBox;
 
-            ltb.IdString = e.NewValue as string;
-
-            if (ltb.Link == LinkType.Read)
-            {
-                CheckForUpdates(ltb);
-            }
-            else
-            {
-                UpdateLinkedBoxes(ltb);
-            }
-        }
-
-        private static void OnLinkChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-        {
-            LinkedTextBox ltb = d as LinkedTextBox;
-
-            ltb.Link = (LinkType)e.NewValue;
-
-            if (ltb.Link == LinkType.Read)
-            {
-                CheckForUpdates(ltb);
-            }
-            else
-            {
-                UpdateLinkedBoxes(ltb);
-            }
+            myLink.WriteLink = e.NewValue as string;
+            UpdateLinkedBoxes(myLink);
         }
 
         private void LinkedTextBox_TextChanged(object sender, TextChangedEventArgs e)
         {
-            if (this.Link == LinkType.Write)
-            {
-                UpdateLinkedBoxes(this);
-            }
-        }
-
-        private static string getStylizedText(string original, string textStyle)
-        {
-            string newText;
-
-            if (textStyle == "caps")
-            {
-                newText = original.Replace(" ", "_");
-                newText = newText.ToUpperInvariant();
-            }
-            else if (textStyle == "underscore")
-            {
-                newText = original.Replace(" ", "_");
-                newText = newText.ToLowerInvariant();
-            }
-            else if (textStyle == "pascal")
-            {
-                TextInfo textInfo = new CultureInfo("en-US", false).TextInfo;
-                newText = textInfo.ToTitleCase(original);
-                newText = newText.Replace(" ", "");
-            }
-            else
-            {
-                return original;
-            }
-
-            return newText;
+            UpdateLinkedBoxes(this);
         }
 
         private static void UpdateLinkedBoxes(LinkedTextBox myLink)
         {
-            foreach (LinkedTextBox link in _links)
+            if (!String.IsNullOrWhiteSpace(myLink.WriteLink))
             {
-                if ((!String.IsNullOrWhiteSpace(link.IdString)) && (link.IdString == myLink.IdString) && (link.Link == LinkType.Read))
+                foreach (LinkedTextBox link in _links)
                 {
-                    string newText = getStylizedText(myLink.Text, link.TextStyle);
-
-                    link.SetValue(TextProperty, newText);
-
-                    RoutedEventArgs newEventArgs = new RoutedEventArgs(LinkedTextBox.LinkedDataChangedEvent);
-                    link.RaiseEvent(newEventArgs);
+                    if (link.ReadLink1 == myLink.WriteLink)
+                    {
+                        link._linkedContent1 = myLink.Text;
+                        link.updateContents();
+                    }
+                    if (link.ReadLink2 == myLink.WriteLink)
+                    {
+                        link._linkedContent2 = myLink.Text;
+                        link.updateContents();
+                    }
                 }
             }
         }
 
-        private static void CheckForUpdates(LinkedTextBox myLink)
+        private static void OnReadLinkChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         {
-            foreach (LinkedTextBox link in _links)
+            LinkedTextBox myLink = d as LinkedTextBox;
+            string newValue = e.NewValue as string;
+            DependencyProperty dp = e.Property;
+
+            if (dp == ReadLink1Property)
             {
-                if ((!String.IsNullOrWhiteSpace(link.IdString)) && (link.IdString == myLink.IdString) && (link.Link == LinkType.Write))
+                myLink.ReadLink1 = newValue;
+            }
+            else
+            {
+                myLink.ReadLink2 = newValue;
+            }
+
+            // A read link ID has been updated so search for a write link with that ID and update contents
+            if (!String.IsNullOrWhiteSpace(newValue))
+            {
+                foreach (LinkedTextBox link in _links)
                 {
-                    string newText = getStylizedText(link.Text, myLink.TextStyle);
-
-                    myLink.SetValue(TextProperty, newText);
-
-                    RoutedEventArgs newEventArgs = new RoutedEventArgs(LinkedTextBox.LinkedDataChangedEvent);
-                    myLink.RaiseEvent(newEventArgs);
+                    if ((!String.IsNullOrWhiteSpace(link.WriteLink)) && (link.WriteLink == newValue))
+                    {
+                        if (dp == ReadLink1Property)
+                        {
+                            myLink._linkedContent1 = link.Text;
+                        }
+                        else
+                        {
+                            myLink._linkedContent2 = link.Text;
+                        }
+                        myLink.updateContents();
+                        
+                        break;
+                    }
                 }
             }
+        }
+
+        private static void OnTextFormatChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+        {
+            LinkedTextBox myLink = d as LinkedTextBox;
+            myLink.updateContents();
+        }
+
+        private static void OnBoxTypeChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+        {
+            LinkedTextBox myLink = d as LinkedTextBox;
+            myLink.updateContents();
+        }
+
+        private void updateContents()
+        {
+            string newText = "";
+
+            if (this.BoxType == LinkedTextBoxType.Normal)
+            {
+                if (String.IsNullOrWhiteSpace(this.TextFormat))
+                {
+                    newText = _linkedContent1 + _linkedContent2;
+                }
+                else
+                {
+                    //TODO: Not so idiotic conversion
+                    if (!String.IsNullOrWhiteSpace(_linkedContent1))
+                    {
+                        newText = String.Format(this.TextFormat, Convert.ToInt32(_linkedContent1), _linkedContent2);
+                    }
+                    
+                }
+
+                if (this.TextStyle == "caps")
+                {
+                    newText = newText.Replace(" ", "_");
+                    newText = newText.ToUpperInvariant();
+                }
+                else if (this.TextStyle == "underscore")
+                {
+                    newText = newText.Replace(" ", "_");
+                    newText = newText.ToLowerInvariant();
+                }
+                else if (this.TextStyle == "pascal")
+                {
+                    TextInfo textInfo = new CultureInfo("en-US", false).TextInfo;
+                    newText = textInfo.ToTitleCase(newText);
+                    newText = newText.Replace(" ", "");
+                }
+            }
+            else
+            {
+                newText = "1";
+            }
+            
+            this.SetValue(TextProperty, newText);
+            
+            RoutedEventArgs newEventArgs = new RoutedEventArgs(LinkedTextBox.LinkedDataChangedEvent);
+            this.RaiseEvent(newEventArgs);
         }
     }
 }

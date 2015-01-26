@@ -1,8 +1,10 @@
 ﻿using Microsoft.Win32;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Windows;
 using System.Windows.Controls;
@@ -24,9 +26,22 @@ namespace ProjectBuider
     /// </summary>
     public partial class MainWindow : Window
     {
-        Dictionary<string, string> fields = new Dictionary<string, string>();
-        List<Tuple<string, string, string>> symLinks = new List<Tuple<string, string, string>>();
-        List<Tuple<string, string>> extApps = new List<Tuple<string, string>>();
+        [DllImport("kernel32.dll")]
+        static extern bool CreateSymbolicLink(
+            string lpSymlinkFileName, string lpTargetFileName, SymbolicLink dwFlags);
+        [DllImport("kernel32.dll")]
+        public static extern uint GetLastError();
+
+        enum SymbolicLink
+        {
+            File = 0,
+            Directory = 1
+        }
+
+        Dictionary<string, string> _fields = new Dictionary<string, string>();
+        List<Tuple<string, string, string>> _replacements = new List<Tuple<string, string, string>>();
+        List<Tuple<string, string>> _symLinks = new List<Tuple<string, string>>();
+        List<Tuple<string, string>> _extApps = new List<Tuple<string, string>>();
 
         bool _isResizing;
         Point _oldMousePos;
@@ -35,6 +50,8 @@ namespace ProjectBuider
         public MainWindow()
         {
             InitializeComponent();
+            this.CommandBindings.Add(new CommandBinding(SystemCommands.CloseWindowCommand, OnCloseWindow));
+
             this.MouseDown += MainWindow_MouseDown;
             this.PreviewMouseUp += MainWindow_PreviewMouseUp;
             this.MouseMove += MainWindow_MouseMove;
@@ -108,137 +125,304 @@ namespace ProjectBuider
             }
         }
 
+        private void OnCloseWindow(object target, ExecutedRoutedEventArgs e)
+        {
+            SystemCommands.CloseWindow(this);
+        }
 
         private void getFields()
         {
             XmlElement projectType = this.cbProjectType.SelectedItem as XmlElement;
-            fields.Add("Project type", projectType.GetAttribute("name"));
+            _fields.Add("Project type", projectType.GetAttribute("name"));
 
             for (int i = 0; i < icItems.Items.Count; i++)
             {
                 UIElement elem = (UIElement)icItems.ItemContainerGenerator.ContainerFromIndex(i);
                 DockPanel dock = (DockPanel)VisualTreeHelper.GetChild(elem, 0);
 
-                var childCount = VisualTreeHelper.GetChildrenCount(dock);
-                string fieldName = "";
-                string fieldContent = "";
-                for (int j = 0; j < childCount; j++)
+                Label l = VisualTreeHelper.GetChild(dock, 0) as Label;
+                if (l != null)
                 {
-                    var child = VisualTreeHelper.GetChild(dock, j);
-
-                    Label l = child as Label;
-                    if (l != null)
+                    XmlAttribute xmlContent = l.Content as XmlAttribute;
+                    if (xmlContent != null)
                     {
-                        XmlAttribute xmlContent = l.Content as XmlAttribute;
-                        if (xmlContent != null)
+                        XmlElement host = xmlContent.OwnerElement;
+                        if (host != null)
                         {
-                            fieldName = xmlContent.Value;
+                            string hostName = host.Name;
+                            string name = xmlContent.Value;
+                            string content;
+
+                            if (hostName == "text_field" || hostName == "combination_field" || hostName == "number_field")
+                            {
+                                content = ((TextBox)VisualTreeHelper.GetChild(dock, 1)).Text;
+                                
+                            }
+                            else if (hostName == "folder_field" || hostName == "file_field")
+                            {
+                                content = ((TextBox)VisualTreeHelper.GetChild(dock, 2)).Text;
+                            }
+                            else
+                            {
+                                throw new XmlException("Unknown XML element type: \"" + hostName + "\"");
+                            }
+                            _fields.Add(name, content);
+                        }
+                    }
+                    else
+                    {
+                        string elementType = l.Content as String;
+
+                        if (elementType == "Replacement")
+                        {
+                            // Store ext, from & to
+                            string ext = ((TextBox)VisualTreeHelper.GetChild(dock, 2)).Text;
+                            string from = ((TextBox)VisualTreeHelper.GetChild(dock, 4)).Text;
+                            string to = ((TextBox)VisualTreeHelper.GetChild(dock, 6)).Text;
+                            _replacements.Add(new Tuple<string, string, string>(ext, from, to));
+                        }
+                        else if (elementType == "Symbolic link")
+                        {
+                            // Store name & target
+                            string name = ((TextBox)VisualTreeHelper.GetChild(dock, 5)).Text;
+                            string target = ((TextBox)VisualTreeHelper.GetChild(dock, 2)).Text;
+                            _symLinks.Add(new Tuple<string, string>(name, target));
+                        }
+                        else if (elementType == "Execute program")
+                        {
+                            // Store path & args
+                            string path = ((TextBox)VisualTreeHelper.GetChild(dock, 1)).Text;
+                            string args = ((TextBox)VisualTreeHelper.GetChild(dock, 4)).Text;
+                            _extApps.Add(new Tuple<string, string>(path, args));
                         }
                         else
                         {
-                            fieldName = l.Content.ToString();
+                            throw new NotSupportedException("Unknown element type: \"" + elementType + "\"");
                         }
                     }
-
-                    TextBox tb = child as TextBox;
-                    if (tb != null)
-                    {
-                        fieldContent = tb.Text;
-                    }
-                }
-
-                if (!(String.IsNullOrEmpty(fieldName) || String.IsNullOrEmpty(fieldContent)))
-                {
-                    fields.Add(fieldName, fieldContent);
-                }
-            }
-        }
-
-        private void getOperationsFromXml(string filename)
-        {
-            validateXml(filename);
-
-            XmlDocument xmlDoc = new XmlDocument();
-            xmlDoc.Load(filename);
-
-            XmlNode projectTypeNode = null;
-            var pTypes = xmlDoc.SelectNodes("/project_types/project_type");
-            for (int i = 0; i < pTypes.Count; i++)
-            {
-                if (pTypes.Item(i).Attributes["name"].Value == fields["Project type"])
-                {
-                    projectTypeNode = pTypes.Item(i);
                 }
             }
 
-            foreach (XmlNode item in projectTypeNode.ChildNodes)
-            {
-                if (item.Name == "templates")
-                {
-                    fields.Add("Template folder", item.Attributes["folder"].Value);
-                }
-            }
-        }
-
-        private void copyAndReplace(string oldPath, string newPath, string[] oldString, string[] newString)
-        {
-            var contents = File.ReadAllText(oldPath);
-            for (int i = 0; i < oldString.Length; i++)
-            {
-                contents = contents.Replace(oldString[i], newString[i]);
-            }
-            File.WriteAllText(newPath, contents);
-        }
-
-        private void validateXml(string filename)
-        {
-            string schFilename = System.IO.Path.GetFileNameWithoutExtension(filename) + ".xsd";
-
-            XmlSchemaSet schemas = new XmlSchemaSet();
-            schemas.Add(null, schFilename);
-            XDocument doc = XDocument.Load(filename);
-
-            doc.Validate(schemas, (o, e) =>
-            {
-                throw new XmlSchemaException(e.Message);
-            });
+            _fields.Add("Project path", System.IO.Path.Combine(_fields["Project root"] + _fields["Project folder"]));
         }
 
         private void bOk_Click(object sender, RoutedEventArgs e)
         {
             getFields();
-            getOperationsFromXml("projects.xml");
-            validateOperations();
-            executeOperations();
+
+            bool valid = false;
+            string warnings, errors;
+            
+            validateOperations(out warnings, out errors);
+            if (!String.IsNullOrEmpty(errors))
+            {
+                MessageBox.Show(errors, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+            else if (!String.IsNullOrEmpty(warnings))
+            {
+                // pop up a dialog with list of warnings and abort & continue buttons
+                MessageBoxResult result = MessageBox.Show(warnings, "Warning", MessageBoxButton.OKCancel, MessageBoxImage.Warning);
+                if (result == MessageBoxResult.OK)
+                {
+                    valid = true;
+                }
+            }
+            else
+            {
+                valid = true;
+            }
+
+            if (valid)
+            {
+                executeOperations();
+            }
+            else
+            {
+                // Empty the containers
+                _fields = new Dictionary<string, string>();
+                _replacements = new List<Tuple<string, string, string>>();
+                _symLinks = new List<Tuple<string, string>>();
+                _extApps = new List<Tuple<string, string>>();
+            }
+        }
+
+        private void validateOperations(out string warnings, out string errors)
+        {
+            warnings = "";
+            errors = "";
+
+            // Validate project path (not empty, legal and doesn't exist)
+            validatePath(_fields["Project path"], "project", ref warnings, ref errors);
+            
+            // Validate template path
+            validatePath(_fields["Template path"], "template", ref warnings, ref errors);
+
+            // Validate text replacements (no empty fields)
+            foreach (var r in _replacements)
+            {
+                if (String.IsNullOrWhiteSpace(r.Item1) ||
+                    String.IsNullOrWhiteSpace(r.Item2) ||
+                    String.IsNullOrWhiteSpace(r.Item3))
+                {
+                    warnings += "Empty fields in text replacements!\n";
+                }
+            }
+
+            // Validate symlinks (no empty fields and target exists)
+            foreach (var s in _symLinks)
+            {
+                if (String.IsNullOrWhiteSpace(s.Item1) ||
+                    String.IsNullOrWhiteSpace(s.Item2))
+                {
+                    warnings += "Empty fields in symbolic links!\n";
+                }
+                else if ((!File.Exists(s.Item2)) && (!Directory.Exists(s.Item2)))
+                {
+                    errors += "Symbolic link target doesn't exist!\n";
+                }
+            }
+
+            // Validate external program invocations (path/name is not empty)
+            foreach (var a in _extApps)
+            {
+                if (String.IsNullOrWhiteSpace(a.Item1))
+                {
+                    warnings += "Empty program name field in external program invocations!\n";
+                }
+            }
+        }
+
+        private void validatePath(string path, string pathName, ref string warnings, ref string errors)
+        {
+            if (String.IsNullOrWhiteSpace(path))
+            {
+                errors += pathName + " path is empty!\n";
+            }
+            else
+            {
+                try
+                {
+                    var pathInfo = new FileInfo(path);
+                    if (Directory.Exists(path))
+                    {
+                        warnings += "The " + pathName + " folder already exists!\n";
+                    }
+                }
+                catch (Exception)
+                {
+                    errors += pathName + " path is not valid!\n";
+                }
+            }
         }
 
         private void executeOperations()
         {
-            copyAndModifyTemplates();
+            copyAndModifyFiles();
             createSymLinks();
             executeExternalApps();
         }
 
         private void executeExternalApps()
         {
-            throw new NotImplementedException();
+            foreach (var app in _extApps)
+            {
+                if (!String.IsNullOrWhiteSpace(app.Item1))
+                {
+                    ProcessStartInfo startInfo = new ProcessStartInfo(app.Item1);
+                    startInfo.Arguments = app.Item2;
+                    startInfo.UseShellExecute = false;
+                    startInfo.WorkingDirectory = _fields["Project path"];
+
+                    Process.Start(startInfo);
+                }
+            }
         }
 
         private void createSymLinks()
         {
-            throw new NotImplementedException();
+            foreach (var s in _symLinks)
+            {
+                string linkName = System.IO.Path.Combine(_fields["Project path"], s.Item1);
+                bool ret;
+                
+                if (File.Exists(s.Item2))
+                {
+                    ret = CreateSymbolicLink(linkName, s.Item2, SymbolicLink.File);
+                }
+                else
+                {
+                    ret = CreateSymbolicLink(linkName, s.Item2, SymbolicLink.Directory);
+                }
+
+
+                uint error = GetLastError();
+            }
         }
 
-        private void copyAndModifyTemplates()
+        private void copyAndModifyFiles()
         {
             // get all template files
             // filter all files that need string replacements and do those using copyAndReplace
             // just copy the rest of the files to the destination folder
+
+            // ...or just copy all and replace later
+            copyFolder(_fields["Template path"], _fields["Project path"]);
+            foreach (var r in _replacements)
+            {
+                string[] files = Directory.GetFiles(_fields["Project path"], "*."+r.Item1, SearchOption.AllDirectories);
+                foreach (var file in files)
+                {
+                    replaceText(file, r.Item2, r.Item3);
+                }
+            }
+            renameFiles("_project_name_", _fields["Project folder"]);
         }
 
-        private void validateOperations()
+        private void renameFiles(string source, string dest)
         {
-            // verify that templates, symlinks and external apps have all the required fields filled
+            string[] files = Directory.GetFiles(_fields["Project path"], "*"+source+"*.*", SearchOption.AllDirectories);
+            foreach (var oldName in files)
+            {
+                string newName = oldName.Replace(source, dest);
+                File.Move(oldName, newName);
+            }
+        }
+
+        private void copyFolder(string source, string dest)
+        {
+            DirectoryInfo dir = new DirectoryInfo(source);
+            DirectoryInfo[] dirs = dir.GetDirectories();
+
+            if (!Directory.Exists(dest))
+            {
+                Directory.CreateDirectory(dest);
+            }
+
+            FileInfo[] files = dir.GetFiles();
+            foreach (FileInfo file in files)
+            {
+                string temppath = System.IO.Path.Combine(dest, file.Name);
+                file.CopyTo(temppath, false);
+            }
+
+            
+            foreach (DirectoryInfo subdir in dirs)
+            {
+                string newDest = System.IO.Path.Combine(dest, subdir.Name);
+                copyFolder(subdir.FullName, newDest);
+            }
+        }
+
+        private void replaceText(string filePath, string source, string dest)
+        {
+            var contents = File.ReadAllText(filePath);
+            contents = contents.Replace(source, dest);
+            /*
+            for (int i = 0; i < oldString.Length; i++)
+            {
+                contents = contents.Replace(oldString[i], newString[i]);
+            }*/
+            File.WriteAllText(filePath, contents);
         }
 
         private void bCancel_Click(object sender, RoutedEventArgs e)
