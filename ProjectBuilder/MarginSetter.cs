@@ -5,7 +5,7 @@ using System.Text;
 using System.Windows;
 using System.Windows.Controls;
 
-namespace ProjectBuider
+namespace ProjectBuilder
 {
     /* Thanks for Elad Katz for providing this handy helper class!
      * http://blogs.microsoft.co.il/eladkatz/2011/05/29/what-is-the-easiest-way-to-set-spacing-between-items-in-stackpanel/

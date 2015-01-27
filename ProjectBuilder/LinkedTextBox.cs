@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 
-namespace ProjectBuider
+namespace ProjectBuilder
 {
     public enum LinkedTextBoxType
     {
@@ -18,8 +18,8 @@ namespace ProjectBuider
     public class LinkedTextBox : TextBox
     {
         private static List<LinkedTextBox> _links = new List<LinkedTextBox>();
-        private string _linkedContent1 = "";
-        private string _linkedContent2 = "";
+        private object _linkedContent1 = "";
+        private object _linkedContent2 = "";
 
         public static readonly RoutedEvent LinkedDataChangedEvent =
             EventManager.RegisterRoutedEvent("LinkedDataChanged", RoutingStrategy.Bubble,
@@ -67,7 +67,7 @@ namespace ProjectBuider
         }
 
         //TODO: Separate the number textbox into its own class.
-        //      A common base class with link list and necessary functionality
+        //  --> A common base class with link list and necessary functionality
         //      and two? subclasses that handle the different box types.
         public LinkedTextBoxType BoxType
         {
@@ -126,13 +126,37 @@ namespace ProjectBuider
                 {
                     if (link.ReadLink1 == myLink.WriteLink)
                     {
-                        link._linkedContent1 = myLink.Text;
-                        link.updateContents();
+                        if (myLink.BoxType == LinkedTextBoxType.Number)
+                        {
+                            try
+                            {
+                                link._linkedContent1 = Convert.ToInt32(myLink.Text);
+                                link.updateContents();
+                            }
+                            catch (Exception) { }
+                        }
+                        else
+                        {
+                            link._linkedContent1 = myLink.Text;
+                            link.updateContents();
+                        }
                     }
                     if (link.ReadLink2 == myLink.WriteLink)
                     {
-                        link._linkedContent2 = myLink.Text;
-                        link.updateContents();
+                        if (myLink.BoxType == LinkedTextBoxType.Number)
+                        {
+                            try
+                            {
+                                link._linkedContent2 = Convert.ToInt32(myLink.Text);
+                                link.updateContents();
+                            }
+                            catch (Exception) { }
+                        }
+                        else
+                        {
+                            link._linkedContent2 = myLink.Text;
+                            link.updateContents();
+                        }
                     }
                 }
             }
@@ -162,11 +186,25 @@ namespace ProjectBuider
                     {
                         if (dp == ReadLink1Property)
                         {
-                            myLink._linkedContent1 = link.Text;
+                            if (myLink.BoxType == LinkedTextBoxType.Normal)
+                            {
+                                myLink._linkedContent1 = link.Text;
+                            }
+                            else
+                            {
+                                myLink._linkedContent1 = Convert.ToDouble(link.Text);
+                            }
                         }
                         else
                         {
-                            myLink._linkedContent2 = link.Text;
+                            if (myLink.BoxType == LinkedTextBoxType.Normal)
+                            {
+                                myLink._linkedContent2 = link.Text;
+                            }
+                            else
+                            {
+                                myLink._linkedContent2 = Convert.ToDouble(link.Text);
+                            }
                         }
                         myLink.updateContents();
                         
@@ -192,46 +230,35 @@ namespace ProjectBuider
         {
             string newText = "";
 
-            if (this.BoxType == LinkedTextBoxType.Normal)
-            {
-                if (String.IsNullOrWhiteSpace(this.TextFormat))
-                {
-                    newText = _linkedContent1 + _linkedContent2;
-                }
-                else
-                {
-                    //TODO: Not so idiotic conversion
-                    if (!String.IsNullOrWhiteSpace(_linkedContent1))
-                    {
-                        newText = String.Format(this.TextFormat, Convert.ToInt32(_linkedContent1), _linkedContent2);
-                    }
-                    
-                }
 
-                if (this.TextStyle == "caps")
-                {
-                    newText = newText.Replace(" ", "_");
-                    newText = newText.ToUpperInvariant();
-                }
-                else if (this.TextStyle == "underscore")
-                {
-                    newText = newText.Replace(" ", "_");
-                    newText = newText.ToLowerInvariant();
-                }
-                else if (this.TextStyle == "pascal")
-                {
-                    TextInfo textInfo = new CultureInfo("en-US", false).TextInfo;
-                    newText = textInfo.ToTitleCase(newText);
-                    newText = newText.Replace(" ", "");
-                }
+            if (String.IsNullOrWhiteSpace(this.TextFormat))
+            {
+                newText = _linkedContent1.ToString() + _linkedContent2.ToString();
             }
             else
             {
-                newText = "1";
+                newText = String.Format(this.TextFormat, _linkedContent1, _linkedContent2);
             }
-            
+
+            if (this.TextStyle == "caps")
+            {
+                newText = newText.Replace(" ", "_");
+                newText = newText.ToUpperInvariant();
+            }
+            else if (this.TextStyle == "underscore")
+            {
+                newText = newText.Replace(" ", "_");
+                newText = newText.ToLowerInvariant();
+            }
+            else if (this.TextStyle == "pascal")
+            {
+                TextInfo textInfo = new CultureInfo("en-US", false).TextInfo;
+                newText = textInfo.ToTitleCase(newText);
+                newText = newText.Replace(" ", "");
+            }
+
             this.SetValue(TextProperty, newText);
-            
+
             RoutedEventArgs newEventArgs = new RoutedEventArgs(LinkedTextBox.LinkedDataChangedEvent);
             this.RaiseEvent(newEventArgs);
         }

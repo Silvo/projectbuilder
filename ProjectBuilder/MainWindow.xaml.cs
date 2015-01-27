@@ -19,7 +19,7 @@ using System.Xml;
 using System.Xml.Linq;
 using System.Xml.Schema;
 
-namespace ProjectBuider
+namespace ProjectBuilder
 {
     /// <summary>
     /// Interaction logic for MainWindow.xaml
@@ -50,6 +50,12 @@ namespace ProjectBuider
         public MainWindow()
         {
             InitializeComponent();
+            
+            XmlDataProvider dp = Resources["ProjectData"] as XmlDataProvider;
+            FileInfo f = new FileInfo("projects.xml");
+            dp.Document = new XmlDocument();
+            dp.Source = new Uri(f.FullName);
+
             this.CommandBindings.Add(new CommandBinding(SystemCommands.CloseWindowCommand, OnCloseWindow));
 
             this.MouseDown += MainWindow_MouseDown;
@@ -130,114 +136,120 @@ namespace ProjectBuider
             SystemCommands.CloseWindow(this);
         }
 
-        private void getFields()
+        private bool getFields()
         {
             XmlElement projectType = this.cbProjectType.SelectedItem as XmlElement;
-            _fields.Add("Project type", projectType.GetAttribute("name"));
-
-            for (int i = 0; i < icItems.Items.Count; i++)
+            if (projectType != null)
             {
-                UIElement elem = (UIElement)icItems.ItemContainerGenerator.ContainerFromIndex(i);
-                DockPanel dock = (DockPanel)VisualTreeHelper.GetChild(elem, 0);
+                _fields.Add("Project type", projectType.GetAttribute("name"));
 
-                Label l = VisualTreeHelper.GetChild(dock, 0) as Label;
-                if (l != null)
+                for (int i = 0; i < icItems.Items.Count; i++)
                 {
-                    XmlAttribute xmlContent = l.Content as XmlAttribute;
-                    if (xmlContent != null)
-                    {
-                        XmlElement host = xmlContent.OwnerElement;
-                        if (host != null)
-                        {
-                            string hostName = host.Name;
-                            string name = xmlContent.Value;
-                            string content;
+                    UIElement elem = (UIElement)icItems.ItemContainerGenerator.ContainerFromIndex(i);
+                    DockPanel dock = (DockPanel)VisualTreeHelper.GetChild(elem, 0);
 
-                            if (hostName == "text_field" || hostName == "combination_field" || hostName == "number_field")
-                            {
-                                content = ((TextBox)VisualTreeHelper.GetChild(dock, 1)).Text;
-                                
-                            }
-                            else if (hostName == "folder_field" || hostName == "file_field")
-                            {
-                                content = ((TextBox)VisualTreeHelper.GetChild(dock, 2)).Text;
-                            }
-                            else
-                            {
-                                throw new XmlException("Unknown XML element type: \"" + hostName + "\"");
-                            }
-                            _fields.Add(name, content);
-                        }
-                    }
-                    else
+                    Label l = VisualTreeHelper.GetChild(dock, 0) as Label;
+                    if (l != null)
                     {
-                        string elementType = l.Content as String;
+                        XmlAttribute xmlContent = l.Content as XmlAttribute;
+                        if (xmlContent != null)
+                        {
+                            XmlElement host = xmlContent.OwnerElement;
+                            if (host != null)
+                            {
+                                string hostName = host.Name;
+                                string name = xmlContent.Value;
+                                string content;
 
-                        if (elementType == "Replacement")
-                        {
-                            // Store ext, from & to
-                            string ext = ((TextBox)VisualTreeHelper.GetChild(dock, 2)).Text;
-                            string from = ((TextBox)VisualTreeHelper.GetChild(dock, 4)).Text;
-                            string to = ((TextBox)VisualTreeHelper.GetChild(dock, 6)).Text;
-                            _replacements.Add(new Tuple<string, string, string>(ext, from, to));
-                        }
-                        else if (elementType == "Symbolic link")
-                        {
-                            // Store name & target
-                            string name = ((TextBox)VisualTreeHelper.GetChild(dock, 5)).Text;
-                            string target = ((TextBox)VisualTreeHelper.GetChild(dock, 2)).Text;
-                            _symLinks.Add(new Tuple<string, string>(name, target));
-                        }
-                        else if (elementType == "Execute program")
-                        {
-                            // Store path & args
-                            string path = ((TextBox)VisualTreeHelper.GetChild(dock, 1)).Text;
-                            string args = ((TextBox)VisualTreeHelper.GetChild(dock, 4)).Text;
-                            _extApps.Add(new Tuple<string, string>(path, args));
+                                if (hostName == "text_field" || hostName == "combination_field" || hostName == "number_field")
+                                {
+                                    content = ((TextBox)VisualTreeHelper.GetChild(dock, 1)).Text;
+
+                                }
+                                else if (hostName == "folder_field" || hostName == "file_field")
+                                {
+                                    content = ((TextBox)VisualTreeHelper.GetChild(dock, 2)).Text;
+                                }
+                                else
+                                {
+                                    throw new XmlException("Unknown XML element type: \"" + hostName + "\"");
+                                }
+                                _fields.Add(name, content);
+                            }
                         }
                         else
                         {
-                            throw new NotSupportedException("Unknown element type: \"" + elementType + "\"");
+                            string elementType = l.Content as String;
+
+                            if (elementType == "Replacement")
+                            {
+                                // Store ext, from & to
+                                string ext = ((TextBox)VisualTreeHelper.GetChild(dock, 2)).Text;
+                                string from = ((TextBox)VisualTreeHelper.GetChild(dock, 4)).Text;
+                                string to = ((TextBox)VisualTreeHelper.GetChild(dock, 6)).Text;
+                                _replacements.Add(new Tuple<string, string, string>(ext, from, to));
+                            }
+                            else if (elementType == "Symbolic link")
+                            {
+                                // Store name & target
+                                string name = ((TextBox)VisualTreeHelper.GetChild(dock, 5)).Text;
+                                string target = ((TextBox)VisualTreeHelper.GetChild(dock, 2)).Text;
+                                _symLinks.Add(new Tuple<string, string>(name, target));
+                            }
+                            else if (elementType == "Execute program")
+                            {
+                                // Store path & args
+                                string path = ((TextBox)VisualTreeHelper.GetChild(dock, 1)).Text;
+                                string args = ((TextBox)VisualTreeHelper.GetChild(dock, 4)).Text;
+                                _extApps.Add(new Tuple<string, string>(path, args));
+                            }
+                            else
+                            {
+                                throw new NotSupportedException("Unknown element type: \"" + elementType + "\"");
+                            }
                         }
                     }
                 }
-            }
 
-            _fields.Add("Project path", System.IO.Path.Combine(_fields["Project root"] + _fields["Project folder"]));
+                _fields.Add("Project path", System.IO.Path.Combine(_fields["Project root"].TrimEnd('\\') + "\\" + _fields["Project folder"]));
+                return true;
+            }
+            return false;
         }
 
         private void bOk_Click(object sender, RoutedEventArgs e)
         {
-            getFields();
+            bool hasFields = getFields();
 
-            bool valid = false;
-            string warnings, errors;
-            
-            validateOperations(out warnings, out errors);
-            if (!String.IsNullOrEmpty(errors))
+            if (hasFields)
             {
-                MessageBox.Show(errors, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-            }
-            else if (!String.IsNullOrEmpty(warnings))
-            {
-                // pop up a dialog with list of warnings and abort & continue buttons
-                MessageBoxResult result = MessageBox.Show(warnings, "Warning", MessageBoxButton.OKCancel, MessageBoxImage.Warning);
-                if (result == MessageBoxResult.OK)
+                bool valid = false;
+                string warnings, errors;
+
+                validateOperations(out warnings, out errors);
+                if (!String.IsNullOrEmpty(errors))
+                {
+                    MessageBox.Show(errors, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+                else if (!String.IsNullOrEmpty(warnings))
+                {
+                    // pop up a dialog with list of warnings and abort & continue buttons
+                    MessageBoxResult result = MessageBox.Show(warnings, "Warning", MessageBoxButton.OKCancel, MessageBoxImage.Warning);
+                    if (result == MessageBoxResult.OK)
+                    {
+                        valid = true;
+                    }
+                }
+                else
                 {
                     valid = true;
                 }
-            }
-            else
-            {
-                valid = true;
-            }
 
-            if (valid)
-            {
-                executeOperations();
-            }
-            else
-            {
+                if (valid)
+                {
+                    executeOperations();
+                }
+                
                 // Empty the containers
                 _fields = new Dictionary<string, string>();
                 _replacements = new List<Tuple<string, string, string>>();
