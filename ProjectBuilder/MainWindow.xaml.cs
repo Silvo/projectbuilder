@@ -6,6 +6,7 @@ using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
@@ -40,6 +41,7 @@ namespace ProjectBuilder
 
         Dictionary<string, string> _fields = new Dictionary<string, string>();
         List<Tuple<string, string, string>> _replacements = new List<Tuple<string, string, string>>();
+        List<Tuple<string, string>> _renames = new List<Tuple<string, string>>();
         List<Tuple<string, string>> _symLinks = new List<Tuple<string, string>>();
         List<Tuple<string, string>> _extApps = new List<Tuple<string, string>>();
 
@@ -157,11 +159,11 @@ namespace ProjectBuilder
                             XmlElement host = xmlContent.OwnerElement;
                             if (host != null)
                             {
-                                string hostName = host.Name;
+                                string hostName = host.ParentNode.Name;
                                 string name = xmlContent.Value;
                                 string content;
 
-                                if (hostName == "text_field" || hostName == "combination_field" || hostName == "number_field")
+                                if (hostName == "text_field" || hostName == "number_field")
                                 {
                                     content = ((TextBox)VisualTreeHelper.GetChild(dock, 1)).Text;
 
@@ -203,6 +205,13 @@ namespace ProjectBuilder
                                 string args = ((TextBox)VisualTreeHelper.GetChild(dock, 4)).Text;
                                 _extApps.Add(new Tuple<string, string>(path, args));
                             }
+                            else if (elementType == "File rename")
+                            {
+                                // Store path & args
+                                string from = ((TextBox)VisualTreeHelper.GetChild(dock, 2)).Text;
+                                string to = ((TextBox)VisualTreeHelper.GetChild(dock, 4)).Text;
+                                _renames.Add(new Tuple<string, string>(from, to));
+                            }
                             else
                             {
                                 throw new NotSupportedException("Unknown element type: \"" + elementType + "\"");
@@ -210,8 +219,6 @@ namespace ProjectBuilder
                         }
                     }
                 }
-
-                _fields.Add("Project path", System.IO.Path.Combine(_fields["Project root"].TrimEnd('\\') + "\\" + _fields["Project folder"]));
                 return true;
             }
             return false;
@@ -253,6 +260,7 @@ namespace ProjectBuilder
                 // Empty the containers
                 _fields = new Dictionary<string, string>();
                 _replacements = new List<Tuple<string, string, string>>();
+                _renames = new List<Tuple<string, string>>();
                 _symLinks = new List<Tuple<string, string>>();
                 _extApps = new List<Tuple<string, string>>();
             }
@@ -264,10 +272,45 @@ namespace ProjectBuilder
             errors = "";
 
             // Validate project path (not empty, legal and doesn't exist)
-            validatePath(_fields["Project path"], "project", ref warnings, ref errors);
+            string projectPath = _fields["Project path"];
+            if (String.IsNullOrWhiteSpace(projectPath))
+            {
+                errors += "Project path is empty!\n";
+            }
+            else
+            {
+                try
+                {
+                    var pathInfo = new FileInfo(projectPath);
+                    if (Directory.Exists(projectPath))
+                    {
+                        warnings += "The project folder already exists!\n";
+                    }
+                }
+                catch (Exception)
+                {
+                    errors += "Project path is not valid!\n";
+                }
+            }
             
             // Validate template path
-            validatePath(_fields["Template path"], "template", ref warnings, ref errors);
+            string templatePath = _fields["Template path"];
+            if (String.IsNullOrWhiteSpace(templatePath))
+            {
+                errors += "Template path is empty!\n";
+            }
+            else
+            {
+                try
+                {
+                    var pathInfo = new FileInfo(templatePath);
+                    Directory.Exists(templatePath);
+                }
+                catch (Exception)
+                {
+                    errors += "Template path is not valid!\n";
+                }
+            }
 
             // Validate text replacements (no empty fields)
             foreach (var r in _replacements)
@@ -277,6 +320,27 @@ namespace ProjectBuilder
                     String.IsNullOrWhiteSpace(r.Item3))
                 {
                     warnings += "Empty fields in text replacements!\n";
+                }
+            }
+
+            // Validate file renaming (no empty fields, no illegal characters)
+            foreach (var r in _renames)
+            {
+                if (String.IsNullOrWhiteSpace(r.Item1) ||
+                    String.IsNullOrWhiteSpace(r.Item2))
+                {
+                    warnings += "Empty fields in file renames!\n";
+                }
+
+                if (!String.IsNullOrWhiteSpace(r.Item2))
+                {
+                    string invalidChars = new string( System.IO.Path.GetInvalidFileNameChars());
+                    Regex regexp = new Regex("["+Regex.Escape(invalidChars)+"]");
+
+                    if (regexp.IsMatch(r.Item2))
+                    {
+                        errors += "Illegal characters in new filename!\n";
+                    }
                 }
             }
 
@@ -300,29 +364,6 @@ namespace ProjectBuilder
                 if (String.IsNullOrWhiteSpace(a.Item1))
                 {
                     warnings += "Empty program name field in external program invocations!\n";
-                }
-            }
-        }
-
-        private void validatePath(string path, string pathName, ref string warnings, ref string errors)
-        {
-            if (String.IsNullOrWhiteSpace(path))
-            {
-                errors += pathName + " path is empty!\n";
-            }
-            else
-            {
-                try
-                {
-                    var pathInfo = new FileInfo(path);
-                    if (Directory.Exists(path))
-                    {
-                        warnings += "The " + pathName + " folder already exists!\n";
-                    }
-                }
-                catch (Exception)
-                {
-                    errors += pathName + " path is not valid!\n";
                 }
             }
         }
@@ -354,20 +395,23 @@ namespace ProjectBuilder
         {
             foreach (var s in _symLinks)
             {
-                string linkName = System.IO.Path.Combine(_fields["Project path"], s.Item1);
-                bool ret;
-                
-                if (File.Exists(s.Item2))
+                if (!String.IsNullOrWhiteSpace(s.Item1) && !String.IsNullOrWhiteSpace(s.Item2))
                 {
-                    ret = CreateSymbolicLink(linkName, s.Item2, SymbolicLink.File);
-                }
-                else
-                {
-                    ret = CreateSymbolicLink(linkName, s.Item2, SymbolicLink.Directory);
-                }
+                    string linkName = System.IO.Path.Combine(_fields["Project path"], s.Item1);
+                    bool ret;
+
+                    if (File.Exists(s.Item2))
+                    {
+                        ret = CreateSymbolicLink(linkName, s.Item2, SymbolicLink.File);
+                    }
+                    else
+                    {
+                        ret = CreateSymbolicLink(linkName, s.Item2, SymbolicLink.Directory);
+                    }
 
 
-                uint error = GetLastError();
+                    uint error = GetLastError();
+                }
             }
         }
 
@@ -381,13 +425,23 @@ namespace ProjectBuilder
             copyFolder(_fields["Template path"], _fields["Project path"]);
             foreach (var r in _replacements)
             {
-                string[] files = Directory.GetFiles(_fields["Project path"], "*."+r.Item1, SearchOption.AllDirectories);
-                foreach (var file in files)
+                if (!String.IsNullOrWhiteSpace(r.Item1) && !String.IsNullOrWhiteSpace(r.Item2))
                 {
-                    replaceText(file, r.Item2, r.Item3);
+                    string[] files = Directory.GetFiles(_fields["Project path"], "*." + r.Item1, SearchOption.AllDirectories);
+                    foreach (var file in files)
+                    {
+                        replaceText(file, r.Item2, r.Item3);
+                    }
                 }
             }
-            renameFiles("_project_name_", _fields["Project folder"]);
+
+            foreach (var r in _renames)
+            {
+                if (!String.IsNullOrWhiteSpace(r.Item1))
+                {
+                    renameFiles(r.Item1, r.Item2);
+                }
+            }
         }
 
         private void renameFiles(string source, string dest)

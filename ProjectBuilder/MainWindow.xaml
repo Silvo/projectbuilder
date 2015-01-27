@@ -9,66 +9,93 @@
         <XmlDataProvider x:Key="ProjectData" XPath="project_types"/>
         <DataTemplate DataType="text_field">
             <DockPanel x:Name="dpTest" LastChildFill="True" local:MarginSetter.Margin="3" Height="30">
-                <Label Name="lFieldName" Content="{Binding XPath=@name}" Width="130" Padding="0 3 0 0"/>
-                <local:LinkedTextBox Name="tbTextField" Text="{Binding XPath=@content, Delay=2000}" WriteLink="{Binding XPath=@name}"/>
+                <Label Name="lFieldName" Content="{Binding XPath=textbox[1]/@name}" Width="130" Padding="0 3 0 0"/>
+                <local:LinkedTextBox Name="tbTextField" TextFormat="{Binding XPath=textbox[1]/@format}" TextStyle="{Binding XPath=textbox[1]/@text_style}"
+                                     Text="{Binding XPath=textbox[1], Mode=OneTime}" WriteLink="{Binding XPath=textbox[1]/@name}"
+                                     ReadLink1="{Binding XPath=textbox[1]/@source1}" ReadLink2="{Binding XPath=textbox[1]/@source2}"/>
             </DockPanel>
         </DataTemplate>
         <DataTemplate DataType="file_field">
             <DockPanel LastChildFill="True" local:MarginSetter.Margin="3" Height="30">
-                <Label Name="lFieldName" Content="{Binding XPath=@name}" Width="130" Padding="0 3 0 0"/>
+                <Label Name="lFieldName" Content="{Binding XPath=textbox[1]/@name}" Width="130" Padding="0 3 0 0"/>
                 <Button Name="bSelectFile" Content="..." DockPanel.Dock="Right" Width="30" Click="bSelectFile_Click" Style="{StaticResource OpenDialogButton}"/>
-                <local:LinkedTextBox Name="tbSelectFile" Text="{Binding XPath=@content, Delay=2000}" WriteLink="{Binding XPath=@name}"/>
+                <local:LinkedTextBox Name="tbSelectFile" TextFormat="{Binding XPath=textbox[1]/@format}" TextStyle="{Binding XPath=textbox[1]/@text_style}"
+                                     Text="{Binding XPath=textbox[1], Mode=OneTime}" WriteLink="{Binding XPath=textbox[1]/@name}"
+                                     ReadLink1="{Binding XPath=textbox[1]/@source1}" ReadLink2="{Binding XPath=textbox[1]/@source2}"/>
             </DockPanel>
         </DataTemplate>
         <DataTemplate DataType="folder_field">
             <DockPanel LastChildFill="True" local:MarginSetter.Margin="3" Height="30">
-                <Label Name="lFieldName" Content="{Binding XPath=@name}" Width="130" Padding="0 3 0 0"/>
+                <Label Name="lFieldName" Content="{Binding XPath=textbox[1]/@name}" Width="130" Padding="0 3 0 0"/>
                 <Button Name="bSelectFolder" Content="..." DockPanel.Dock="Right" Width="30" Click="bSelectFolder_Click" Style="{StaticResource OpenDialogButton}"/>
-                <local:LinkedTextBox Name="tbSelectFolder" Text="{Binding XPath=@content, Delay=2000}" WriteLink="{Binding XPath=@name}"/>
+                <local:LinkedTextBox Name="tbSelectFolder" TextFormat="{Binding XPath=textbox[1]/@format}" TextStyle="{Binding XPath=textbox[1]/@text_style}"
+                                     Text="{Binding XPath=textbox[1], Mode=OneTime}" WriteLink="{Binding XPath=textbox[1]/@name}"
+                                     ReadLink1="{Binding XPath=textbox[1]/@source1}" ReadLink2="{Binding XPath=textbox[1]/@source2}"/>
             </DockPanel>
         </DataTemplate>
         <DataTemplate DataType="file_text_replacement">
             <DockPanel LastChildFill="True" local:MarginSetter.Margin="3" Height="30">
                 <Label Content="Replacement" Width="84" Padding="0 3 0 0"/>
                 <Label Content="File ext" Width="40" Padding="0 3 0 0"/>
-                <TextBox Name="tbFileExt" Width="105" Text="{Binding XPath=@extension}"/>
+                <local:LinkedTextBox Name="tbFileExt" Width="105" TextFormat="{Binding XPath=textbox[1]/@format}" TextStyle="{Binding XPath=textbox[1]/@text_style}"
+                                     Text="{Binding XPath=textbox[1], Mode=OneTime}" WriteLink="{Binding XPath=textbox[1]/@name}"
+                                     ReadLink1="{Binding XPath=textbox[1]/@source1}" ReadLink2="{Binding XPath=textbox[1]/@source2}"/>
                 <Label Content="From" Padding="0 3 0 0"/>
-                <TextBox x:Name="tbFromString" Width="122" Text="{Binding XPath=@target_string}"/>
+                <local:LinkedTextBox Name="tbFromString" Width="122" TextFormat="{Binding XPath=textbox[2]/@format}" TextStyle="{Binding XPath=textbox[2]/@text_style}"
+                                     Text="{Binding XPath=textbox[2], Mode=OneTime}" WriteLink="{Binding XPath=textbox[2]/@name}"
+                                     ReadLink1="{Binding XPath=textbox[2]/@source1}" ReadLink2="{Binding XPath=textbox[2]/@source2}"/>
                 <Label Content="To" Padding="0 3 0 0"/>
-                <local:LinkedTextBox Name="tbToString" ReadLink1="{Binding XPath=@source_field}" TextStyle="{Binding XPath=@text_style}"/>
+                <local:LinkedTextBox Name="tbToString" TextFormat="{Binding XPath=textbox[3]/@format}" TextStyle="{Binding XPath=textbox[3]/@text_style}"
+                                     Text="{Binding XPath=textbox[3], Mode=OneTime}" WriteLink="{Binding XPath=textbox[3]/@name}"
+                                     ReadLink1="{Binding XPath=textbox[3]/@source1}" ReadLink2="{Binding XPath=textbox[3]/@source2}"/>
             </DockPanel>
         </DataTemplate>
         <DataTemplate DataType="symlink">
             <DockPanel LastChildFill="True" local:MarginSetter.Margin="3" Height="30">
                 <Label Content="Symbolic link" Width="90" Padding="0 3 0 0"/>
                 <Label Content="Path" Padding="10 3 0 0" Width="34"/>
-                <TextBox Name="tbTargetPath" Text="{Binding XPath=@target_path}" Width="290"/>
+                <local:LinkedTextBox Name="tbTargetPath" Width="290" TextFormat="{Binding XPath=textbox[2]/@format}" TextStyle="{Binding XPath=textbox[2]/@text_style}"
+                                     Text="{Binding XPath=textbox[2], Mode=OneTime}" WriteLink="{Binding XPath=textbox[2]/@name}"
+                                     ReadLink1="{Binding XPath=textbox[2]/@source1}" ReadLink2="{Binding XPath=textbox[2]/@source2}"/>
                 <Button Name="bSelectFolder" Content="..." Width="30" Click="bSelectFolder_Click" Style="{StaticResource OpenDialogButton}"/>
                 <Label Content="Name" Padding="0 3 0 0" Width="35"/>
-                <TextBox Name="tbLinkName" Text="{Binding XPath=@name}" HorizontalAlignment="Stretch"/>
+                <local:LinkedTextBox Name="tbLinkName" TextFormat="{Binding XPath=textbox[1]/@format}" TextStyle="{Binding XPath=textbox[1]/@text_style}"
+                                     Text="{Binding XPath=textbox[1], Mode=OneTime}" WriteLink="{Binding XPath=textbox[1]/@name}"
+                                     ReadLink1="{Binding XPath=textbox[1]/@source1}" ReadLink2="{Binding XPath=textbox[1]/@source2}"/>
             </DockPanel>
         </DataTemplate>
         <DataTemplate DataType="program">
             <DockPanel LastChildFill="True" local:MarginSetter.Margin="3" Height="30">
                 <Label Content="Execute program" Width="130" Padding="0 3 0 0"/>
-                <TextBox Name="tbPath" Text="{Binding XPath=@link_name}" HorizontalAlignment="Stretch" Width="290"/>
+                <local:LinkedTextBox Name="tbPath" Width="290" TextFormat="{Binding XPath=textbox[1]/@format}" TextStyle="{Binding XPath=textbox[1]/@text_style}"
+                                     Text="{Binding XPath=textbox[1], Mode=OneTime}" WriteLink="{Binding XPath=textbox[1]/@name}"
+                                     ReadLink1="{Binding XPath=textbox[1]/@source1}" ReadLink2="{Binding XPath=textbox[1]/@source2}"/>
                 <Button Name="bSelectFolder" Content="..." Width="30" Click="bSelectFile_Click" Style="{StaticResource OpenDialogButton}"/>
                 <Label Content="Args" Padding="8 3 0 0" Width="35"/>
-                <TextBox Name="tbExeArgs" Text="{Binding XPath=@target_path}"/>
+                <local:LinkedTextBox Name="tbExeArgs" TextFormat="{Binding XPath=textbox[2]/@format}" TextStyle="{Binding XPath=textbox[2]/@text_style}"
+                                     Text="{Binding XPath=textbox[2], Mode=OneTime}" WriteLink="{Binding XPath=textbox[2]/@name}"
+                                     ReadLink1="{Binding XPath=textbox[2]/@source1}" ReadLink2="{Binding XPath=textbox[2]/@source2}"/>
             </DockPanel>
         </DataTemplate>
-        <DataTemplate DataType="combination_field">
+        <DataTemplate DataType="file_rename">
             <DockPanel LastChildFill="True" local:MarginSetter.Margin="3" Height="30">
-                <Label Name="lFieldName" Content="{Binding XPath=@name}" Width="130" Padding="0 3 0 0"/>
-                <local:LinkedTextBox Name="tbTextField" TextFormat="{Binding XPath=@format}" WriteLink="{Binding XPath=@name}"
-                                     ReadLink1="{Binding XPath=@source1}" ReadLink2="{Binding XPath=@source2}" TextStyle="{Binding XPath=@text_style}"/>
+                <Label Content="File rename" Width="84" Padding="0 3 0 0"/>
+                <Label Content="From" Width="40" Padding="10 3 0 0"/>
+                <local:LinkedTextBox Name="tbFromString" Width="269" TextFormat="{Binding XPath=textbox[1]/@format}" TextStyle="{Binding XPath=textbox[1]/@text_style}"
+                                     Text="{Binding XPath=textbox[1], Mode=OneTime}" WriteLink="{Binding XPath=textbox[1]/@name}"
+                                     ReadLink1="{Binding XPath=textbox[1]/@source1}" ReadLink2="{Binding XPath=textbox[1]/@source2}"/>
+                <Label Content="To" Padding="0 3 0 0"/>
+                <local:LinkedTextBox Name="tbToString" TextFormat="{Binding XPath=textbox[2]/@format}" TextStyle="{Binding XPath=textbox[2]/@text_style}"
+                                     Text="{Binding XPath=textbox[2], Mode=OneTime}" WriteLink="{Binding XPath=textbox[2]/@name}"
+                                     ReadLink1="{Binding XPath=textbox[2]/@source1}" ReadLink2="{Binding XPath=textbox[2]/@source2}"/>
             </DockPanel>
         </DataTemplate>
         <DataTemplate DataType="number_field">
             <DockPanel LastChildFill="True" local:MarginSetter.Margin="3" Height="30">
-                <Label Name="lFieldName" Content="{Binding XPath=@name}" Width="130" Padding="0 3 0 0"/>
-                <local:LinkedTextBox Name="tbTextField" TextFormat="{Binding XPath=@format}" WriteLink="{Binding XPath=@name}"
-                                     ReadLink1="{Binding XPath=@source1}" BoxType="Number"/>
+                <Label Name="lFieldName" Content="{Binding XPath=textbox[1]/@name}" Width="130" Padding="0 3 0 0"/>
+                <local:LinkedTextBox Name="tbNumberField" BoxType="Number" TextFormat="{Binding XPath=textbox[1]/@format}" TextStyle="{Binding XPath=textbox[1]/@text_style}"
+                                     Text="{Binding XPath=textbox[1], Mode=OneTime}" WriteLink="{Binding XPath=textbox[1]/@name}"
+                                     ReadLink1="{Binding XPath=textbox[1]/@source1}" ReadLink2="{Binding XPath=textbox[1]/@source2}"/>
             </DockPanel>
         </DataTemplate>
     </Window.Resources>

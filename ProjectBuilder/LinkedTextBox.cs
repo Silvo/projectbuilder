@@ -38,6 +38,15 @@ namespace ProjectBuilder
             }
         }
 
+        //TODO: Separate the number textbox into its own class.
+        //  --> A common base class with link list and necessary functionality
+        //      and two? subclasses that handle the different box types.
+        public LinkedTextBoxType BoxType
+        {
+            get { return (LinkedTextBoxType)GetValue(BoxTypeProperty); }
+            set { SetValue(BoxTypeProperty, value); }
+        }
+
         public string TextStyle
         {
             get { return (string)GetValue(TextStyleProperty); }
@@ -66,14 +75,9 @@ namespace ProjectBuilder
             set { SetValue(ReadLink2Property, value); }
         }
 
-        //TODO: Separate the number textbox into its own class.
-        //  --> A common base class with link list and necessary functionality
-        //      and two? subclasses that handle the different box types.
-        public LinkedTextBoxType BoxType
-        {
-            get { return (LinkedTextBoxType)GetValue(BoxTypeProperty); }
-            set { SetValue(BoxTypeProperty, value); }
-        }
+        public static readonly DependencyProperty BoxTypeProperty =
+            DependencyProperty.Register("BoxType", typeof(LinkedTextBoxType), typeof(LinkedTextBox),
+            new PropertyMetadata(LinkedTextBoxType.Normal));
 
         public static readonly DependencyProperty TextStyleProperty =
             DependencyProperty.Register("TextStyle", typeof(string), typeof(LinkedTextBox),
@@ -95,9 +99,6 @@ namespace ProjectBuilder
             DependencyProperty.Register("ReadLink2", typeof(string), typeof(LinkedTextBox),
             new PropertyMetadata("", OnReadLinkChanged));
 
-        public static readonly DependencyProperty BoxTypeProperty =
-            DependencyProperty.Register("BoxType", typeof(LinkedTextBoxType), typeof(LinkedTextBox),
-            new PropertyMetadata(LinkedTextBoxType.Normal, OnBoxTypeChanged));
 
         public LinkedTextBox()
         {
@@ -192,7 +193,12 @@ namespace ProjectBuilder
                             }
                             else
                             {
-                                myLink._linkedContent1 = Convert.ToDouble(link.Text);
+                                try
+                                {
+                                    myLink._linkedContent1 = Convert.ToInt32(link.Text);
+                                    myLink.updateContents();
+                                }
+                                catch (Exception) { }
                             }
                         }
                         else
@@ -203,7 +209,12 @@ namespace ProjectBuilder
                             }
                             else
                             {
-                                myLink._linkedContent2 = Convert.ToDouble(link.Text);
+                                try
+                                {
+                                    myLink._linkedContent2 = Convert.ToInt32(link.Text);
+                                    myLink.updateContents();
+                                }
+                                catch (Exception) { }
                             }
                         }
                         myLink.updateContents();
@@ -215,12 +226,6 @@ namespace ProjectBuilder
         }
 
         private static void OnTextFormatChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-        {
-            LinkedTextBox myLink = d as LinkedTextBox;
-            myLink.updateContents();
-        }
-
-        private static void OnBoxTypeChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         {
             LinkedTextBox myLink = d as LinkedTextBox;
             myLink.updateContents();
