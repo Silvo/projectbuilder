@@ -80,8 +80,16 @@ namespace ProjectBuilder
                     Point newMousePos = e.GetPosition((Window)sender);
                     var delta = newMousePos - _oldMousePos;
 
-                    this.Width += delta.X;
-                    this.Height += delta.Y;
+                    if (this.Width + delta.X > this.MinWidth)
+                    {
+                        this.Width += delta.X;
+                    }
+
+                    if (this.Height + delta.Y > this.MinHeight)
+                    {
+                        this.Height += delta.Y;
+                    }
+                    
 
                     _oldMousePos = newMousePos;
                 }
@@ -271,8 +279,18 @@ namespace ProjectBuilder
             warnings = "";
             errors = "";
 
+            string projectPath;
+            try
+            {
+                projectPath = _fields["Project path"];
+            }
+            catch (KeyNotFoundException)
+            {
+                errors += "No field with name \"Project path\"!\n";
+                return;
+            }
+
             // Validate project path (not empty, legal and doesn't exist)
-            string projectPath = _fields["Project path"];
             if (String.IsNullOrWhiteSpace(projectPath))
             {
                 errors += "Project path is empty!\n";
@@ -294,7 +312,17 @@ namespace ProjectBuilder
             }
             
             // Validate template path
-            string templatePath = _fields["Template path"];
+            string templatePath;
+            try
+            {
+                templatePath = _fields["Template path"];
+            }
+            catch (KeyNotFoundException)
+            {
+                errors += "No field with name \"Template path\"!\n";
+                return;
+            }
+
             if (String.IsNullOrWhiteSpace(templatePath))
             {
                 errors += "Template path is empty!\n";
@@ -386,7 +414,17 @@ namespace ProjectBuilder
                     startInfo.UseShellExecute = false;
                     startInfo.WorkingDirectory = _fields["Project path"];
 
-                    Process.Start(startInfo);
+                    /* NOTE: Doesn't support batch files? */
+
+                    try
+                    {
+                        Process.Start(startInfo);
+                    }
+                    catch (Exception e)
+                    {
+                        String errorMsg = String.Format("Error while executing program \"{0} {1}\":\n\"{2}\"", app.Item1, app.Item2, e.Message);
+                        MessageBox.Show(errorMsg, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                    }
                 }
             }
         }
@@ -397,7 +435,7 @@ namespace ProjectBuilder
             {
                 if (!String.IsNullOrWhiteSpace(s.Item1) && !String.IsNullOrWhiteSpace(s.Item2))
                 {
-                    string linkName = System.IO.Path.Combine(_fields["Project path"], s.Item1);
+                    String linkName = System.IO.Path.Combine(_fields["Project path"], s.Item1);
                     bool ret;
 
                     if (File.Exists(s.Item2))

@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="clr-namespace:ProjectBuilder"
         Title="ProjectBuilder"
-        Height="800" Width="900" Background="{x:Null}" WindowStyle="None" AllowsTransparency="True">
+        Height="800" Width="900" Background="{x:Null}" WindowStyle="None" AllowsTransparency="True" MinWidth="200" MinHeight="200">
 
     <Window.Resources>
         <XmlDataProvider x:Key="ProjectData" XPath="project_types"/>
@@ -46,6 +46,7 @@
                                      ReadLink1="{Binding XPath=textbox[2]/@source1}" ReadLink2="{Binding XPath=textbox[2]/@source2}"/>
                 <Label Content="To" Padding="0 3 0 0"/>
                 <local:LinkedTextBox Name="tbToString" TextFormat="{Binding XPath=textbox[3]/@format}" TextStyle="{Binding XPath=textbox[3]/@text_style}"
+                                     SpecialStyle="{Binding XPath=textbox[3]/@special_style}"
                                      Text="{Binding XPath=textbox[3], Mode=OneTime}" WriteLink="{Binding XPath=textbox[3]/@name}"
                                      ReadLink1="{Binding XPath=textbox[3]/@source1}" ReadLink2="{Binding XPath=textbox[3]/@source2}"/>
             </DockPanel>

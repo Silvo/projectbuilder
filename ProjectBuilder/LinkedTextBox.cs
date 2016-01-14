@@ -52,6 +52,12 @@ namespace ProjectBuilder
             get { return (string)GetValue(TextStyleProperty); }
             set { SetValue(TextStyleProperty, value); }
         }
+        
+        public string SpecialStyle
+        {
+            get { return (string)GetValue(SpecialStyleProperty); }
+            set { SetValue(SpecialStyleProperty, value); }
+        }
 
         public string TextFormat
         {
@@ -81,6 +87,10 @@ namespace ProjectBuilder
 
         public static readonly DependencyProperty TextStyleProperty =
             DependencyProperty.Register("TextStyle", typeof(string), typeof(LinkedTextBox),
+            new PropertyMetadata("none"));
+
+        public static readonly DependencyProperty SpecialStyleProperty =
+            DependencyProperty.Register("SpecialStyle", typeof(string), typeof(LinkedTextBox),
             new PropertyMetadata("none"));
 
         public static readonly DependencyProperty TextFormatProperty =
@@ -260,6 +270,11 @@ namespace ProjectBuilder
                 TextInfo textInfo = new CultureInfo("en-US", false).TextInfo;
                 newText = textInfo.ToTitleCase(newText);
                 newText = newText.Replace(" ", "");
+            }
+
+            if (this.SpecialStyle == "double_backslash")
+            {
+                newText = newText.Replace("\\", "\\\\");
             }
 
             this.SetValue(TextProperty, newText);
